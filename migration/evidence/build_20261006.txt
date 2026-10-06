@@ -1,0 +1,34 @@
+
+> public-sdm-template@1.2.6 build
+> ray build --target tuya
+
+info env node v24.18.0
+info cli @ray-js/cli 1.7.55
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[11:14:58:985] info build raypack v1.7.55
+[11:14:58:986] info build esbuild v0.25.12
+[11:14:58:987] info build @ray-core/framework-shared version: v0.4.12
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[11:14:59:283] WARN build import styles from './index.less'; autoCssModulesDeprecated.js
+[11:14:59:283] WARN build If this pattern exists, please add the parameter declaration import styles from './index.less?modules.js';  instead.
+[11:14:59:283] info build clean APP/dist/tuya
+[11:14:59:297] WARN ray.config configWebpack is deprecated, only resolve.alias configuration is supported!
+
+o ┌─ Ray compiling app ...
+√ ├─ bundle: app:copy-public ─────────────────────────  10% 0ms
+√ ├─ bundle: app:create-app ──────────────────────────  20% 4ms
+√ ├─ bundle: app:copy-webview ────────────────────────  30% 4ms
+√ ├─ bundle: app:analyse-pages ───────────────────────  40% 382ms
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+√ ├─ bundle: app:create-pages ────────────────────────  50% 784ms
+√ ├─ bundle: app:create-page-config ──────────────────  60% 6ms
+√ ├─ bundle: app:create-native-components ────────────  70% 0ms
+√ ├─ bundle: app:create-i18n ─────────────────────────  80% 3ms
+√ ├─ bundle: app:create-safe-scripts ─────────────────  90% 0ms
+√ ├─ bundle: app:create-render-scripts ─────────────── 100% 0ms
+√ └─ Ray completed! 1.2s
+
+[11:15:00:568] info build ------- build done -------

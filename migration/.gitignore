@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.tools/
+__pycache__/
+reference/diagnostics/
+*.log
+.env
+.env.*

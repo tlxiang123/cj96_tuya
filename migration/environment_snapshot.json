@@ -1,0 +1,30 @@
+{
+  "snapshot_time": "2026-10-06T11:12:52.594016+08:00",
+  "source": "Original active APP working tree",
+  "mirror_reference_only": "Original CJ96 integrations/tuya/panel mirror",
+  "python": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "node": "24.18.0",
+  "npm": "11.16.0",
+  "yarn": "1.22.22",
+  "tuya_ide": "0.10.8",
+  "installed_packages": {
+    "@ray-js/cli": "1.7.55",
+    "@ray-js/ray": "1.7.55",
+    "@ray-js/panel-sdk": "1.14.1",
+    "@ray-js/smart-ui": "2.7.2",
+    "typescript": "4.9.5"
+  },
+  "panel_version": "1.0.55",
+  "package_version": "1.2.6",
+  "project_id": "tyijxdai2dcrdeuwju",
+  "excluded_source_files": [
+    "src\\pages\\home\\index.tsx.corrupt_before_repair"
+  ],
+  "missing_user_screenshots": [],
+  "source_file_count": 709,
+  "mirror_changed_count": 1,
+  "full_mirror_not_included": true,
+  "cold_install_tested": false,
+  "phone_tested_this_session": false,
+  "raw_screenshots_included": false
+}

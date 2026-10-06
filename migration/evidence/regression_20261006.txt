@@ -1,0 +1,23 @@
+TEST ONLY: using external dependencies: APP
+RUN: D:\Python\Python314\python.exe -X utf8 BUNDLE\tests\test_tuya_bottom_nav.py
+[
+  {
+    "panel": "BUNDLE\\panel",
+    "geometry": "matches FTU within 0.001px",
+    "assets": "all ten byte-identical",
+    "labels": "five separate Text elements with original handlers",
+    "font": "all ten glyphs present"
+  }
+]
+PASS
+RUN: D:\Python\Python314\python.exe -X utf8 BUNDLE\tests\test_tuya_device_editor.py
+BUNDLE\panel PASS: dynamic values, 0/4/14/72/128 groups, ScrollView, independent labels, 8 preserved handlers, selection and leading zeros
+PASS
+RUN: D:\Python\Python314\python.exe -X utf8 BUNDLE\tests\test_tuya_device_list.py
+BUNDLE\panel PASS: headers, repeated bottom clicks, footer order/count, sorted row actions, sync lock, debug actions absent
+PASS
+RUN: D:\Python\Python314\python.exe -X utf8 BUNDLE\tests\test_tuya_device_sync_protocol.py
+rows=242 custom=236 table_bytes=10406 chunks=24 frames=28 max_frame=932 estimated_seconds=2.24 hash=35F7AEF4 upsert=AA55FE2103013D12E6B9BFE5BAA6E4BCA0E6849FE599A8E4BA8CEE35F7AEF455AA
+RUN: D:\Python\Python314\python.exe -X utf8 BUNDLE\tests\test_tuya_group_choice_buttons.py
+BUNDLE\panel PASS: 4 popup modes; separate native background and text; confirm/cancel/all callbacks; arrows and bounded input
+PASS: 5 regression scripts. Does NOT certify phone rendering or cloud/board delivery.
