@@ -1,0 +1,8 @@
+请先读取根目录 00_换电脑先读.md、AGENTS.md，再读 migration/开始阅读_迁移与开发交接.md。
+本目录是可独立编辑构建的 Windows x64 共享迁移工程。用根目录 python dev.py doctor/build/test；不要再依赖旧电脑 C:/Users/Administrator/TuYaMiniProject/miniapp 或 D:/Install/NodeJS。
+此目录已带 node_modules、runtime/node、Python 测试库及 .buildHash/installers。保持它们，不要首次启动就重新安装依赖。
+业务源码就在 src，不在旧镜像或 dist。用户要 APP 尽量与本地界面一致、按钮图文分离且点击有效。
+不要恢复未添加和清除表格；不改 DP101/cj96_raw 业务逻辑。以用户最新需求为准，改完重新构建和测试。
+操作脚本用 Python 3。不要将旧构建/截图当成本次真机结果，不擅自发布涂鸦项目或上传运行时/安装包。
+
+真机预览缓存修复：安装包保存在 .buildHash/installers，复制工程时保留；不要移回根目录，以免 IDE 工程哈希检查超时后复用旧包。

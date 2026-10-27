@@ -2,3 +2,11 @@
 node_modules
 .ray
 dist
+.buildHash/
+
+# Portable bundle only (never commit)
+runtime/
+installers/
+portable_checksums.json
+verification/
+__pycache__/

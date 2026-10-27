@@ -86,9 +86,10 @@ def main():
             print('TEST ONLY: using external dependencies:', env['CJ96_DEPENDENCY_PANEL'])
         else:
             env.pop('CJ96_DEPENDENCY_PANEL', None)
-        for path in sorted((ROOT / 'tests').glob('test_tuya_*.py')):
+        tests = sorted((ROOT / 'tests').glob('test_tuya_*.py'))
+        for path in tests:
             execute([sys.executable, '-X', 'utf8', path], cwd=ROOT, env=env)
-        print('PASS: 5 regression scripts. Does NOT certify phone rendering or cloud/board delivery.')
+        print(f'PASS: {len(tests)} regression scripts. Does NOT certify phone rendering or cloud/board delivery.')
         return 0
     if args.action == 'install':
         if not yarn:

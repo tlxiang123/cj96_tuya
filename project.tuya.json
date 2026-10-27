@@ -12,7 +12,7 @@
     "BizKit": "3.0.1",
     "HomeKit": "3.0.2"
   },
-  "baseversion": "2.30.24",
+  "baseversion": "2.30.29",
   "devMode": "ray",
   "compileType": "miniprogram",
   "projectname": "cj96",

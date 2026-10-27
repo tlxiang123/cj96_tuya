@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Image, Input, ScrollView, Text, View, device, getStorageSync, hideStatusBar, setStorageSync, showToast } from '@ray-js/ray';
-import { hooks, useDevInfo } from '@ray-js/panel-sdk';
+import { useDevInfo, useProps } from '@ray-js/panel-sdk';
+import { useOverviewSubscription, OverviewMode, OverviewChart } from './overview-runtime';
+import { useCloudLogs, CloudLogPanel } from './log-runtime';
 import brandImage from '@/assets/cj96/set_button.png';
-import networkNoneIcon from '@/assets/cj96/network_status_none_100.png';
-import networkEthernetIcon from '@/assets/cj96/network_status_ethernet_100.png';
-import networkWifiIcon from '@/assets/cj96/network_status_wifi_100.png';
-import network4GIcon from '@/assets/cj96/network_status_4g_100.png';
+import cloudOnlineIcon from '@/assets/cj96/overview_cloud_online.png';
+import cloudOfflineIcon from '@/assets/cj96/overview_cloud_offline.png';
+import cloudConnectingIcon from '@/assets/cj96/overview_cloud_connecting.png';
 import pressureIcon from '@/assets/cj96/window6_pressure_icon.png';
 import flowIcon from '@/assets/cj96/window6_flow_icon.png';
 import pumpIcon from '@/assets/cj96/window7_pump_icon.png';
@@ -28,8 +29,6 @@ import humidityDialogBackground from '@/assets/cj96/humidity_threshold_dialog_52
 import rainDialogIcon from '@/assets/cj96/window3_delay_96.png';
 import humidityDialogIcon from '@/assets/cj96/water_icon_96_aa.png';
 import editBackground from '@/assets/cj96/debug_edit_inner_99x71.png';
-import cancelButtonImage from '@/assets/cj96/set_runtime_cancel_same_font_120x60.png';
-import okButtonImage from '@/assets/cj96/set_runtime_ok_same_font_120x60.png';
 import sensorTypeIcon from '@/assets/cj96/Sensor.png';
 import valveTypeIcon from '@/assets/cj96/Solenoid_Valve.png';
 import toggleOffIcon from '@/assets/cj96/toggle-off.png';
@@ -59,8 +58,6 @@ import window3Region7 from '@/assets/cj96/window3_region_7.png';
 import cycleRegionLeft from '@/assets/cj96/cycle_region_left_390x340.png';
 import cycleRegionRight from '@/assets/cj96/cycle_region_right_545x340.png';
 import cycleColon from '@/assets/cj96/cycle_colon_14x40.png';
-import cycleCancelImage from '@/assets/cj96/w2_group_bind_cancel_120x60.png';
-import cycleConfirmImage from '@/assets/cj96/w2_ok_120x60.png';
 import window4Region1 from '@/assets/cj96/window4_region1_319x384.png';
 import window4Region2 from '@/assets/cj96/window4_region2_319x384.png';
 import window4Region3 from '@/assets/cj96/window4_region3_321x384.png';
@@ -76,7 +73,6 @@ import w2SetRegion1 from '@/assets/cj96/w2set_region_1.png';
 import w2SetRegion2 from '@/assets/cj96/w2set_region_2.png';
 import w2SetRegion3 from '@/assets/cj96/w2set_region_3.png';
 import w2ChangeIrrListBackground from '@/assets/cj96/w2_change_irr_list_546x184.png';
-import w2GroupBindCancelImage from '@/assets/cj96/w2_group_bind_cancel_120x60.png';
 import w2BindGroupImage from '@/assets/cj96/w2_set_bind_113x113_norm.png';
 import w2ClearGroupImage from '@/assets/cj96/w2_set_clear_113x113_norm.png';
 import w2DeleteGroupImage from '@/assets/cj96/w2_set_delete_group_113x113_norm.png';
@@ -88,16 +84,9 @@ import w2GroupBindRegion1 from '@/assets/cj96/w2_group_bind_region1_405x305.png'
 import w2GroupBindRegion2 from '@/assets/cj96/w2_group_bind_region2_245x305.png';
 import w2GroupBindRegion3 from '@/assets/cj96/w2_group_bind_region3_309x305.png';
 import w2GroupBindAction from '@/assets/cj96/w2_group_bind_action_983x70.png';
-import w2BindGroupNumber from '@/assets/cj96/w2_bind_group_number_145x70.png';
-import w2BindGroupName from '@/assets/cj96/w2_bind_group_name_145x70.png';
-import w2BindLinkedPump from '@/assets/cj96/w2_bind_linked_pump_145x70.png';
-import w2BindLinkedSensor from '@/assets/cj96/w2_bind_linked_sensor_145x70.png';
-import w2BindSelectPump from '@/assets/cj96/w2_bind_select_pump_215x105.png';
-import w2BindSelectSensor from '@/assets/cj96/w2_bind_select_sensor_215x105.png';
-import w2GroupBindConfirm from '@/assets/cj96/w2_group_bind_confirm_120x60.png';
+import w2GroupBindLabelBackground from '@/assets/cj96/confirm_cancel_bg_145x70.png';
+import w2GroupBindTitleBackground from '@/assets/cj96/confirm_cancel_bg_215x105.png';
 import w2GroupRenameEdit from '@/assets/cj96/w2_group_rename_edit_360x61.png';
-import w2CapacityCancelImage from '@/assets/cj96/w2_group_bind_cancel_120x60.png';
-import w2CapacityOkImage from '@/assets/cj96/w2_ok_120x60.png';
 import selectOffImage from '@/assets/cj96/window7_select_off.png';
 import selectOnImage from '@/assets/cj96/window7_select_on.png';
 import modeSelectOffImage from '@/assets/cj96/mode_select_off.png';
@@ -105,7 +94,7 @@ import modeSelectOnImage from '@/assets/cj96/mode_select_on.png';
 import styles from './index.module.less';
 
 const CJ96_DP_ID = 101;
-const PANEL_VERSION = '1.0.55';
+const PANEL_VERSION = '1.0.70';
 const ROUND_IRRIGATION_ON_FRAME = 'AA55F10155AA';
 const ROUND_IRRIGATION_OFF_FRAME = 'AA55F10255AA';
 const WINDOW4_DEVICE_STATE_COMMAND = 'E4';
@@ -116,10 +105,9 @@ const DEVICE_SYNC_FRAME = 'AA55F50155AA';
 const DEVICE_TABLE_READ_FRAME = 'AA55F50255AA';
 const DEVICE_TABLE_VERSION_PREFIX = 'AA55F503';
 // The board scans addresses 20..255 in a fixed 14.86-second window.
-// Keep the longer watchdog internal so table frames can finish after scanning,
-// while the user-facing modal shows the actual fixed scan maximum.
+// Keep the watchdog internal so table frames can finish after scanning.
+// The host does not report scan progress; do not display a local countdown.
 const DEVICE_SYNC_TIMEOUT_SECONDS = 90;
-const DEVICE_DISCOVERY_DISPLAY_SECONDS = 15;
 const DEVICE_TABLE_VERSION_FALLBACK_MS = 1800;
 const NETWORK_NONE_STATE_FRAME = 'AA55E10055AA';
 const NETWORK_ETHERNET_STATE_FRAME = 'AA55E10155AA';
@@ -181,7 +169,7 @@ type ValveLogEntry = {
   time: string;
   week: string;
   mode: ValveLogMode;
-  action: '开启' | '关闭';
+  action: '开启' | '关闭' | '下一组';
   detail: string;
 };
 
@@ -194,7 +182,7 @@ function isValveLogEntry(value: any): value is ValveLogEntry {
     Number.isFinite(value.timestamp) && typeof value.time === 'string' &&
     typeof value.week === 'string' &&
     (value.mode === '手动灌溉' || value.mode === '自动灌溉') &&
-    (value.action === '开启' || value.action === '关闭') &&
+    (value.action === '开启' || value.action === '关闭' || value.action === '下一组') &&
     typeof value.detail === 'string';
 }
 
@@ -334,6 +322,11 @@ const INITIAL_DEVICES: PanelDevice[] = [
   { address: 10, type: '传感器', name: '流量表', group: '-', connected: false, stateKnown: false, state: false, status: '未连接' },
 ];
 
+function isGroupBindableSensor(item: PanelDevice | undefined): boolean {
+  // Addresses 9/10 are the main-valve pressure/flow meters, not group sensors.
+  return item?.type === '传感器' && item.address !== 9 && item.address !== 10;
+}
+
 type DeviceListRow =
   | { kind: 'device'; device: PanelDevice; index: number }
   | { kind: 'empty'; index: number };
@@ -353,6 +346,8 @@ type PendingBoardCommand = {
   showSuccessToast: boolean;
   minimumSequence: number;
   startedAt: number;
+  timeoutMs: number;
+  requiresValveConfirmation: boolean;
   expectsDeviceTable?: boolean;
   usesDeviceTableRevision?: boolean;
   onSuccess?: () => void;
@@ -474,29 +469,6 @@ function extractGroupNumbers(group: string): number[] {
   )).sort((a, b) => a - b);
 }
 
-function formatValveLogDetail(items: PanelDevice[]): string {
-  const grouped = new Map<string, number[]>();
-  items.filter(item => item.type === '电磁阀').forEach(item => {
-    const normalized = String(item.group || '').trim();
-    const groups = normalized === '*' || normalized === '所有阀组'
-      ? ['全部阀组']
-      : extractGroupNumbers(normalized).map(groupNo => `阀组${groupNo}`);
-    (groups.length ? groups : ['未分组']).forEach(group => {
-      const addresses = grouped.get(group) || [];
-      addresses.push(item.address);
-      grouped.set(group, addresses);
-    });
-  });
-  if (!grouped.size) return '暂无已配置电磁阀';
-  return Array.from(grouped.entries())
-    .sort(([left], [right]) => left.localeCompare(right, 'zh-CN'))
-    .map(([group, addresses]) => {
-      const uniqueAddresses = Array.from(new Set(addresses)).sort((left, right) => left - right);
-      return `${group} [地址${uniqueAddresses.join('、')}]`;
-    })
-    .join('；');
-}
-
 function formatDeviceGroupText(group: string): string {
   const normalized = String(group || '').trim();
   if (!normalized || normalized === '-') return '-';
@@ -571,10 +543,15 @@ function bindPanelDeviceGroup(item: PanelDevice, groupNo: number, allGroups: boo
 
 function removeGroupNumber(group: string, targetGroupNo: number): string {
   const normalized = String(group || '').trim();
-  if (!normalized || normalized === '-' || normalized === '*' || normalized === '所有阀组') {
+  if (!normalized || normalized === '-') {
     return normalized || '-';
   }
-  const remaining = extractGroupNumbers(normalized).filter(groupNo => groupNo !== targetGroupNo);
+  // An all-group binding must also lose the cleared group, while retaining
+  // the sensor/pump bindings of the other groups in the 128-bit group table.
+  const groups = normalized === '*' || normalized === '所有阀组'
+    ? Array.from({ length: 128 }, (_, index) => index + 1)
+    : extractGroupNumbers(normalized);
+  const remaining = groups.filter(groupNo => groupNo !== targetGroupNo);
   return remaining.length ? remaining.join(',') : '-';
 }
 
@@ -584,6 +561,63 @@ function makeByteCommandFrame(command: 'F3' | 'F4' | 'F6' | 'F7', value: number)
 
 function makeWindow4StateFrame(command: string, value: number, enabled: boolean): string {
   return `AA55${command}${value.toString(16).padStart(2, '0').toUpperCase()}${enabled ? '01' : '00'}55AA`;
+}
+
+function describeManualValveCommand(kind: string, command: string): string {
+  const valve = kind === 'home' && command.match(/^device_state=(\d+),([01])$/);
+  if (valve) return `正在${valve[2] === '1' ? '开' : '关'}阀门[${valve[1]}]`;
+  const group = kind === 'home' && command.match(/^group_state=(\d+),([01])$/);
+  if (group) return `正在${group[2] === '1' ? '开启' : '关闭'}阀组[${group[1]}]`;
+  if (kind === 'round_irrigation') return command === 'on' ? '正在开启轮灌阀门' : '正在关闭轮灌阀门';
+  return '';
+}
+
+function manualValveTimeoutMs(kind: string, command: string, devices: PanelDevice[]): number {
+  const group = kind === 'home' && command.match(/^group_state=(\d+),[01]$/);
+  const count = devices.filter(device => device.type !== '传感器' &&
+    (!group || device.group === '*' || device.group.split(',').includes(group[1]))).length;
+  const opening = kind === 'round_irrigation' ? command === 'on'
+    : Boolean(group && command.endsWith(',1'));
+  // This is a UI deadline, including bounded recovery and failed-open cleanup.
+  // Healthy commands complete immediately on the host's final confirmation.
+  return kind === 'round_irrigation' || group
+    ? Math.max(15000, count * (opening ? 14000 : 7000) + (opening ? 15000 : 10000)) : 15000;
+}
+
+function matchesBoardCommandAck(parts: string[], pending: PendingBoardCommand): boolean {
+  const sequence = Number(parts[2]);
+  if (!Number.isFinite(sequence) || sequence <= pending.minimumSequence) return false;
+  if (parts[3] !== 'SUCCEEDED' && parts[3] !== 'FAILED') return false;
+  const kind = (parts[5] || '').toLowerCase();
+  const command = (parts[6] || '').toLowerCase();
+  if (kind && kind !== pending.kind.toLowerCase()) return false;
+  if (command && command !== pending.command.toLowerCase()) return false;
+  // Old firmware acknowledges queueing, which cannot prove a valve has opened.
+  if (pending.requiresValveConfirmation &&
+      (kind !== pending.kind.toLowerCase() || command !== pending.command.toLowerCase() ||
+       (parts[3] === 'SUCCEEDED' && parts[7] !== 'CONFIRMED'))) return false;
+  return true;
+}
+
+function formatBoardCommandError(kind: string, command: string, errorCode: number, failedAddress = -1): string {
+  const valve = kind === 'home' && command.match(/^device_state=(\d+),[01]$/);
+  const address = valve ? valve[1] : failedAddress > 0 ? String(failedAddress) : '';
+  const subject = address ? `${address}号阀门` : '阀门';
+  const stopped = kind === 'home' && /^group_state=\d+,1$/.test(command)
+    ? '\n本组后续开阀已停止' : '';
+  if (describeManualValveCommand(kind, command)) {
+    if (errorCode === 4002) return `主机正在执行阀门操作\n请稍后再试${address ? `（${address}号阀门）` : ''}`;
+    if (errorCode === 4003 && address) return `${address}号设备不支持阀门开关\n请核对主机设备类型`;
+    if (errorCode === 4004 && address) return `主机设备表中没有${address}号阀门\n请先同步设备表`;
+    if (errorCode === 4005) return `${subject}指令未能加入队列\n请稍后重试，仍失败请检查主机通信`;
+    if (errorCode === 4006) return `${subject}操作失败\n应答超时${stopped}`;
+    if (errorCode === 4007) return `${subject}操作失败\n设备拒绝指令${stopped}`;
+    if (errorCode === 4008) return `${subject}操作失败\n设备应答状态不匹配${stopped}`;
+    if (errorCode === 4009) return `${subject}操作失败\n请检查总线通信${stopped}`;
+    if (errorCode === 4010) return '主机重启，执行结果未确认\n请核对主机状态后再操作';
+    if (errorCode === 4011) return `${subject}关阀状态未确认\n已暂停后续开阀，请先关阀或查询确认关闭`;
+  }
+  return '板端操作失败\n错误码 ' + (errorCode || 4001);
 }
 
 function makeW2CapacityCommand(mode: W2CapacityMode, groupNo: number, capacity: number): string {
@@ -632,7 +666,7 @@ function encodeUtf8Hex(value: string): string {
 
 function makeW2GroupRenameCommand(groupNo: number, name: string): string {
   const groupHex = clamp(Math.trunc(groupNo), 1, 128).toString(16).padStart(2, '0').toUpperCase();
-  const nameHex = encodeUtf8Hex(name).slice(0, 64);
+  const nameHex = encodeUtf8Hex(truncateUtf8Text(name, 32));
   return `AA55FD${groupHex}${(nameHex.length / 2).toString(16).padStart(2, '0').toUpperCase()}${nameHex}55AA`;
 }
 
@@ -646,6 +680,40 @@ function truncateUtf8Text(value: string, maximumBytes: number): string {
     usedBytes += bytes;
   }
   return result;
+}
+
+function formatPanelGroupName(groupNo: number, names: Record<number, string>): string {
+  return names[groupNo] || `阀组[${groupNo}]`;
+}
+
+// CJDS1 reports membership and capacity, but has no group-name field.
+// Keep only board-confirmed names locally, scoped to the controller device.
+function readPanelGroupNames(deviceId: string): Record<number, string> {
+  if (!deviceId) return {};
+  try {
+    const result: any = getStorageSync({ key: `cj96:group-names:${deviceId}` });
+    const raw = typeof result === 'string' ? result : result?.data;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!parsed || parsed.deviceId !== deviceId || !parsed.names ||
+        typeof parsed.names !== 'object' || Array.isArray(parsed.names)) return {};
+    const names: Record<number, string> = {};
+    for (let groupNo = 1; groupNo <= 128; groupNo += 1) {
+      const name = parsed.names[groupNo];
+      if (typeof name === 'string' && name.trim()) names[groupNo] = truncateUtf8Text(name.trim(), 32);
+    }
+    return names;
+  } catch (_error) {
+    return {};
+  }
+}
+
+function writePanelGroupNames(deviceId: string, names: Record<number, string>): void {
+  if (!deviceId) return;
+  try {
+    setStorageSync({ key: `cj96:group-names:${deviceId}`, data: JSON.stringify({ deviceId, names }) });
+  } catch (_error) {
+    // A storage failure must not turn a successful board command into a failure.
+  }
 }
 
 function makeW2DeviceUpsertCommand(
@@ -672,12 +740,43 @@ function appendDeviceTableBaseHash(frame: string, hash: number): string {
   return `${frame.slice(0, -suffix.length)}EE${(hash >>> 0).toString(16).padStart(8, '0').toUpperCase()}${suffix}`;
 }
 
+// Keep the one-second update out of Home: device hooks, lists and event handlers
+// should not be rebuilt just because the clock changed.
+const HeaderClock = React.memo(function HeaderClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <>
+      <Text className={styles.clock}>
+        {pad2(now.getHours())}:{pad2(now.getMinutes())}:{pad2(now.getSeconds())}
+      </Text>
+      <Text className={styles.date}>
+        {now.getFullYear()}/{now.getMonth() + 1}/{now.getDate()}
+      </Text>
+      <View className={styles.week}>
+        <Text>周</Text>
+        <Text>{WEEKDAYS[now.getDay()]}</Text>
+      </View>
+    </>
+  );
+});
+
 export function Home() {
   const { publishDpsBase } = device;
-  const devInfo = useDevInfo();
-  const deviceOnline = hooks.useDeviceOnline();
-  const reportedFrame = hooks.useDpValue<string>('cj96_raw');
-  const [now, setNow] = useState(() => new Date());
+  // Reuse the initialized SDM model. Legacy hooks each subscribe separately and
+  // fetch the full device info again for every DP report.
+  const devInfo = useDevInfo(info => ({
+    devId: info.devId,
+    isOnline: info.isOnline,
+    isCloudOnline: info.isCloudOnline,
+  }));
+  const deviceOnline = devInfo?.isOnline;
+  const reportedFrame = useProps(props => props.cj96_raw);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
   const [irrigating, setIrrigating] = useState(false);
@@ -688,18 +787,18 @@ export function Home() {
   const [rainInput, setRainInput] = useState('1');
   const [humidityInput, setHumidityInput] = useState('80');
   const [activePage, setActivePage] = useState<MainPage>('overview');
+  const [logScrollRequest, setLogScrollRequest] = useState(0);
   const [deviceListScrollTop, setDeviceListScrollTop] = useState(0);
   const [devices, setDevices] = useState<PanelDevice[]>(INITIAL_DEVICES);
   const [valveLogs, setValveLogs] = useState<ValveLogEntry[]>([]);
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [syncingDevices, setSyncingDevices] = useState(false);
-  const [syncRemaining, setSyncRemaining] = useState(0);
   const [deviceReportPending, setDeviceReportPending] = useState(false);
+  const [testDeviceTableReady, setTestDeviceTableReady] = useState(false);
   const [window2Opening, setWindow2Opening] = useState(false);
   const [window2TransitionClosing, setWindow2TransitionClosing] = useState(false);
   const syncTransferRef = useRef<DeviceSyncTransfer | null>(null);
   const syncDeadlineRef = useRef(0);
-  const syncDisplayDeadlineRef = useRef(0);
   const syncRequestActiveRef = useRef(false);
   const syncButtonLockRef = useRef(false);
   const pendingDeleteAddressRef = useRef<number | null>(null);
@@ -727,6 +826,7 @@ export function Home() {
   const [showW2DeviceRename, setShowW2DeviceRename] = useState(false);
   const [showW2ClearTip, setShowW2ClearTip] = useState(false);
   const [showW2ActionTip, setShowW2ActionTip] = useState(false);
+  const [manualValveProgress, setManualValveProgress] = useState('');
   const [w2TipText, setW2TipText] = useState('');
   const [w2EditingIndex, setW2EditingIndex] = useState<number | null>(null);
   const [w2EditingAddress, setW2EditingAddress] = useState('20');
@@ -736,6 +836,8 @@ export function Home() {
   const [w2SelectedGroupNo, setW2SelectedGroupNo] = useState(1);
   const [w2GroupPreviewEnabled, setW2GroupPreviewEnabled] = useState(false);
   const [w2GroupNumbers, setW2GroupNumbers] = useState([1, 2, 3, 4]);
+  const [w2GroupListRevision, setW2GroupListRevision] = useState(0);
+  const [w2GroupNames, setW2GroupNames] = useState<Record<number, string>>({});
   const [w2GroupName, setW2GroupName] = useState('阀组[1]');
   const [w2CapacityMode, setW2CapacityMode] = useState<W2CapacityMode>('single');
   const [w2CapacityGroupNo, setW2CapacityGroupNo] = useState(1);
@@ -807,9 +909,7 @@ export function Home() {
 
   useEffect(() => {
     hideStatusBar();
-    const timer = setInterval(() => setNow(new Date()), 1000);
     return () => {
-      clearInterval(timer);
       if (deviceTableVersionFallbackTimerRef.current !== null) {
         clearTimeout(deviceTableVersionFallbackTimerRef.current);
         deviceTableVersionFallbackTimerRef.current = null;
@@ -840,7 +940,7 @@ export function Home() {
   useEffect(() => {
     const timer = setInterval(() => {
       const pending = pendingBoardCommandRef.current;
-      if (!pending || Date.now() - pending.startedAt < BOARD_COMMAND_ACK_TIMEOUT_MS) return;
+      if (!pending || Date.now() - pending.startedAt < pending.timeoutMs) return;
       pendingBoardCommandRef.current = null;
       sendingRef.current = false;
       setSending(false);
@@ -852,15 +952,20 @@ export function Home() {
         syncDeadlineRef.current = 0;
         setDeviceReportPending(false);
         setSyncingDevices(false);
-        setSyncRemaining(0);
       }
       pending.onFailure?.();
-      setW2TipText('板端确认超时\n请检查设备在线状态');
+      setManualValveProgress('');
+      setW2TipText(pending.requiresValveConfirmation
+        ? '执行结果未确认\n请核对主机状态及主机版本' : '板端确认超时\n请检查设备在线状态');
       setShowW2ActionTip(true);
       completeWindow2Opening();
     }, 250);
     return () => clearInterval(timer);
   }, [completeWindow2Opening]);
+
+  useEffect(() => {
+    setW2GroupNames(readPanelGroupNames(deviceId || ''));
+  }, [deviceId]);
 
   useEffect(() => {
     if (!deviceId || cacheLoadedDeviceIdRef.current === deviceId) return;
@@ -879,6 +984,7 @@ export function Home() {
   }, [deviceId]);
 
   const clearPendingBoardCommand = () => {
+    setManualValveProgress('');
     pendingBoardCommandRef.current = null;
     sendingRef.current = false;
     setSending(false);
@@ -893,6 +999,7 @@ export function Home() {
 
   const startFullDeviceTableRead = (onFail?: () => void, boardAlreadyResponded = false) => {
     clearDeviceTableVersionFallback();
+    setTestDeviceTableReady(false);
     pendingAutoAssignRef.current = false;
     deviceTableReadPendingRef.current = true;
     pendingDeleteAddressRef.current = null;
@@ -902,7 +1009,6 @@ export function Home() {
     syncRequestActiveRef.current = true;
     syncDeadlineRef.current = Date.now() + DEVICE_SYNC_TIMEOUT_SECONDS * 1000;
     setDeviceReportPending(true);
-    setSyncRemaining(0);
     setSyncingDevices(false);
     setShowW2ActionTip(false);
     publishFrame(DEVICE_TABLE_READ_FRAME, '读取设备表', () => {}, false, () => {
@@ -912,14 +1018,12 @@ export function Home() {
       syncDeadlineRef.current = 0;
       setDeviceReportPending(false);
       setSyncingDevices(false);
-      setSyncRemaining(0);
       onFail?.();
     }, { kind: 'device_sync', command: 'read' }, boardAlreadyResponded);
   };
 
   useEffect(() => {
-    if (normalizedReportedFrame === ROUND_IRRIGATION_ON_FRAME) setIrrigating(true);
-    if (normalizedReportedFrame === ROUND_IRRIGATION_OFF_FRAME) setIrrigating(false);
+    // Downlink echoes only confirm delivery; physical results arrive in CJACK1.
     if (normalizedReportedFrame === NETWORK_NONE_STATE_FRAME) setReportedNetwork('none');
     if (normalizedReportedFrame === NETWORK_ETHERNET_STATE_FRAME) setReportedNetwork('ethernet');
     if (normalizedReportedFrame === NETWORK_WIFI_STATE_FRAME) setReportedNetwork('wifi');
@@ -934,37 +1038,43 @@ export function Home() {
       const ackSequence = Number(ackParts[2]);
       const ackSucceeded = ackParts[3] === 'SUCCEEDED';
       const ackErrorCode = Number(ackParts[4] || 0);
-      const reportedKind = (ackParts[5] || '').toLowerCase();
-      const reportedCommand = ackParts.slice(6).join('|').toLowerCase();
       const pending = pendingBoardCommandRef.current;
-      if (!Number.isFinite(ackSequence) || ackSequence <= 0 || ackSequence <= lastAckSequenceRef.current) return;
-      lastAckSequenceRef.current = ackSequence;
-      if (deviceId) setStorageSync(`${COMMAND_ACK_STORAGE_PREFIX}${deviceId}`, String(ackSequence));
-      if (!pending || ackSequence <= pending.minimumSequence) return;
-      if (reportedKind && reportedKind !== pending.kind.toLowerCase()) return;
-      if (reportedCommand && reportedCommand !== pending.command.toLowerCase()) return;
-       pendingBoardCommandRef.current = null;
-       sendingRef.current = false;
-       setSending(false);
-       if (!ackSucceeded) {
-         clearDeviceTableVersionFallback();
-         syncRequestActiveRef.current = false;
-         deviceTableReadPendingRef.current = false;
-         syncTransferRef.current = null;
-         syncGroupCapacitiesRef.current = null;
-         syncDeadlineRef.current = 0;
-         setDeviceReportPending(false);
-         setSyncingDevices(false);
-         setSyncRemaining(0);
-         setW2TipText('板端操作失败\n错误码 ' + (ackErrorCode || 4001));
-         setShowW2ActionTip(true);
-         pending.onFailure?.();
-         completeWindow2Opening();
-       } else {
-         pending.onSuccess?.();
-       }
-       return;
+      if (!Number.isFinite(ackSequence) || ackSequence <= 0) return;
+      if (ackSequence > lastAckSequenceRef.current) {
+        lastAckSequenceRef.current = ackSequence;
+        if (deviceId) setStorageSync(`${COMMAND_ACK_STORAGE_PREFIX}${deviceId}`, String(ackSequence));
       }
+      if (!pending || !matchesBoardCommandAck(ackParts, pending)) return;
+      setManualValveProgress('');
+      pendingBoardCommandRef.current = null;
+      sendingRef.current = false;
+      setSending(false);
+      if (!ackSucceeded) {
+        clearDeviceTableVersionFallback();
+        syncRequestActiveRef.current = false;
+        deviceTableReadPendingRef.current = false;
+        syncTransferRef.current = null;
+        syncGroupCapacitiesRef.current = null;
+        syncDeadlineRef.current = 0;
+        setDeviceReportPending(false);
+        setSyncingDevices(false);
+        if (pending.kind === 'home' && pending.command.startsWith('device_state=') &&
+            (ackErrorCode === 4003 || ackErrorCode === 4004)) {
+          setTestDeviceTableReady(false);
+        }
+        setW2TipText(formatBoardCommandError(pending.kind, pending.command, ackErrorCode, Number(ackParts[8] || -1)));
+        setShowW2ActionTip(true);
+        pending.onFailure?.();
+        completeWindow2Opening();
+      } else {
+        pending.onSuccess?.();
+        if (pending.requiresValveConfirmation) {
+          setW2TipText(`${pending.actionName}成功`);
+          setShowW2ActionTip(true);
+        }
+      }
+      return;
+    }
     if (!normalizedReportedFrame.startsWith(`${DEVICE_SYNC_PREFIX}|`)) return;
     const parts = normalizedReportedFrame.split('|');
     if (parts.length < 3) return;
@@ -1035,9 +1145,9 @@ export function Home() {
         syncGroupCapacitiesRef.current = null;
         setDeviceReportPending(false);
         setSyncingDevices(false);
-        setSyncRemaining(0);
         syncButtonLockRef.current = false;
         setShowW2ActionTip(false);
+        setTestDeviceTableReady(true);
         completeWindow2Opening();
         return;
       }
@@ -1089,12 +1199,12 @@ export function Home() {
        syncDeadlineRef.current = 0;
        setDeviceReportPending(false);
        setSyncingDevices(false);
-       setSyncRemaining(0);
        syncButtonLockRef.current = false;
        if (deviceTableReadPendingRef.current &&
           pendingDeleteAddressRef.current === null && !pendingAutoAssignRef.current) {
         deviceTableReadPendingRef.current = false;
         syncTransferRef.current = null;
+        setTestDeviceTableReady(true);
         completeWindow2Opening();
         return;
       }
@@ -1223,12 +1333,12 @@ export function Home() {
       syncDeadlineRef.current = 0;
       setDeviceReportPending(false);
       setSyncingDevices(false);
-      setSyncRemaining(0);
       syncButtonLockRef.current = false;
       if (deviceTableReadPendingRef.current &&
           pendingDeleteAddressRef.current === null && !pendingAutoAssignRef.current) {
         deviceTableReadPendingRef.current = false;
         syncTransferRef.current = null;
+        setTestDeviceTableReady(true);
         completeWindow2Opening();
         return;
       }
@@ -1265,13 +1375,9 @@ export function Home() {
       syncDeadlineRef.current = Date.now() + DEVICE_SYNC_TIMEOUT_SECONDS * 1000;
     }
     let timedOut = false;
-    const updateRemaining = () => {
+    // Only the host knows discovery progress; this deadline detects a missing result.
+    const checkTimeout = () => {
       const remaining = Math.max(0, Math.ceil((syncDeadlineRef.current - Date.now()) / 1000));
-      const displayDeadline = syncDisplayDeadlineRef.current > 0
-        ? syncDisplayDeadlineRef.current
-        : syncDeadlineRef.current;
-      const displayRemaining = Math.max(0, Math.ceil((displayDeadline - Date.now()) / 1000));
-      if (syncingDevices) setSyncRemaining(displayRemaining);
       if (remaining > 0 || timedOut) return;
       timedOut = true;
       clearDeviceTableVersionFallback();
@@ -1285,7 +1391,6 @@ export function Home() {
       syncDeadlineRef.current = 0;
       setDeviceReportPending(false);
       setSyncingDevices(false);
-      setSyncRemaining(0);
       syncButtonLockRef.current = false;
       setW2TipText(autoAssignTimedOut
         ? '一键添加超时\n请重新同步'
@@ -1293,20 +1398,15 @@ export function Home() {
           ? '设备表读取超时\n请重试'
           : '同步超时\n请检查设备连接后重试');
       setShowW2ActionTip(true);
+      if (tableReadTimedOut) setTestDeviceTableReady(false);
       syncTransferRef.current = null;
       completeWindow2Opening();
       pendingAutoAssignRef.current = false;
     };
-    updateRemaining();
-    const timer = setInterval(updateRemaining, 1000);
+    checkTimeout();
+    const timer = setInterval(checkTimeout, 1000);
 
     return () => clearInterval(timer);
-  }, [deviceReportPending, syncingDevices]);
-
-  useEffect(() => {
-    if (!deviceReportPending && !syncingDevices && !syncRequestActiveRef.current) {
-      syncDisplayDeadlineRef.current = 0;
-    }
   }, [deviceReportPending, syncingDevices]);
 
   useEffect(() => {
@@ -1315,14 +1415,30 @@ export function Home() {
     }
   }, [deviceReportPending, syncingDevices, sending]);
 
-  const currentNetworkIcon = !deviceOnline
-    ? networkNoneIcon
-    : {
-        none: networkNoneIcon,
-        ethernet: networkEthernetIcon,
-        wifi: networkWifiIcon,
-        '4g': network4GIcon,
-      }[reportedNetwork];
+  // A Wi-Fi/4G link report is separate from the SDK's cloud online status.
+  const cloudOnline = typeof devInfo?.isCloudOnline === 'boolean'
+    ? devInfo.isCloudOnline && deviceOnline !== false
+    : deviceOnline;
+  const cloudStatus = cloudOnline === true ? 'online' : cloudOnline === false ? 'offline' : 'connecting';
+  const currentCloudIcon = { online: cloudOnlineIcon, offline: cloudOfflineIcon, connecting: cloudConnectingIcon }[cloudStatus];
+  const cloudStatusLabel = { online: '云在线', offline: '云离线', connecting: '连接中' }[cloudStatus];
+  const networkTypeLabel = { none: '', ethernet: 'LAN', wifi: 'Wi-Fi', '4g': '4G' }[reportedNetwork];
+
+  const publishOverviewWatch = useCallback((frame: string) => {
+    if (!deviceId) return;
+    publishDpsBase({ deviceId, dps: { [CJ96_DP_ID]: frame }, mode: 1,
+      pipelines: [0, 1, 2, 3, 4, 5, 6], options: {}, success: () => {}, fail: () => {} });
+  }, [deviceId, publishDpsBase]);
+  const overviewSnapshot = useOverviewSubscription(deviceId,
+    activePage === 'overview' && cloudOnline === true, normalizedReportedFrame, publishOverviewWatch);
+  const publishLogRead = useCallback((frame: string, onFail: () => void) => {
+    if (!deviceId) { onFail(); return; }
+    publishDpsBase({ deviceId, dps: { [CJ96_DP_ID]: frame }, mode: 1,
+      pipelines: [0, 1, 2, 3, 4, 5, 6], options: {}, success: () => {}, fail: onFail });
+  }, [deviceId, publishDpsBase]);
+  const cloudLogs = useCloudLogs(deviceId, activePage === 'log' && cloudOnline === true,
+    normalizedReportedFrame, publishLogRead);
+  const [showAppOperations, setShowAppOperations] = useState(false);
 
   const publishFrame = (
     frame: string,
@@ -1371,12 +1487,21 @@ export function Home() {
     sendingRef.current = true;
     setSending(true);
     if (boardCommand) {
+      const progress = describeManualValveCommand(boardCommand.kind, boardCommand.command);
+      if (progress) {
+        setManualValveProgress(progress);
+        setW2TipText(progress);
+        setShowW2ActionTip(true);
+      }
       pendingBoardCommandRef.current = {
         ...boardCommand,
         actionName,
         showSuccessToast,
         minimumSequence: lastAckSequenceRef.current,
         startedAt: Date.now(),
+        timeoutMs: progress ? manualValveTimeoutMs(boardCommand.kind, boardCommand.command, devices)
+          : BOARD_COMMAND_ACK_TIMEOUT_MS,
+        requiresValveConfirmation: !!progress,
         onSuccess,
         onFailure: onFail,
       };
@@ -1400,6 +1525,10 @@ export function Home() {
         if (boardCommand && pendingBoardCommandRef.current?.kind === boardCommand.kind &&
             pendingBoardCommandRef.current?.command === boardCommand.command) {
           clearPendingBoardCommand();
+          if (describeManualValveCommand(boardCommand.kind, boardCommand.command)) {
+            setW2TipText('指令发送失败\n请检查网络后重试');
+            setShowW2ActionTip(true);
+          }
         }
         if (boardCommand?.expectsDeviceTable) {
           syncRequestActiveRef.current = false;
@@ -1409,7 +1538,6 @@ export function Home() {
           syncDeadlineRef.current = 0;
           setDeviceReportPending(false);
           setSyncingDevices(false);
-          setSyncRemaining(0);
         }
         onFail?.();
         showToast({ title: formatCallbackValue(error) || '下发失败', icon: 'none' });
@@ -1417,7 +1545,7 @@ export function Home() {
     });
   };
 
-  const appendValveLog = useCallback((mode: ValveLogMode, action: '开启' | '关闭') => {
+  const appendValveLog = useCallback((mode: ValveLogMode, action: ValveLogEntry['action']) => {
     const currentTime = new Date();
     const timestamp = currentTime.getTime();
     const entry: ValveLogEntry = {
@@ -1427,14 +1555,14 @@ export function Home() {
       week: `周${WEEKDAYS[currentTime.getDay()]}`,
       mode,
       action,
-      detail: formatValveLogDetail(devices),
+      detail: '主机已确认操作请求，执行结果以主机简报为准。',
     };
     setValveLogs(current => {
       const next = pruneValveLogs([entry, ...current], timestamp);
       writeValveLogCache(deviceId || '', next);
       return next;
     });
-  }, [deviceId, devices]);
+  }, [deviceId]);
 
   const openRainDialog = () => {
     setRainInput(String(rainDelayDays));
@@ -1500,7 +1628,7 @@ export function Home() {
       ...extractGroupNumbers(item.group),
       selectedGroupNo,
     ])).sort((a, b) => a - b));
-    setW2GroupName(`阀组[${selectedGroupNo}]`);
+    setW2GroupName(formatPanelGroupName(selectedGroupNo, w2GroupNames));
     setW2SelectedPumpIndexes([]);
     setW2SelectedSensorIndexes([]);
     setShowW2Editor(true);
@@ -1570,11 +1698,17 @@ export function Home() {
         return nextGroup === item.group ? item : { ...item, group: nextGroup };
       }));
       setW2GroupNumbers(remainingGroups);
+      setW2GroupNames(current => {
+        const next = { ...current };
+        delete next[targetGroupNo];
+        writePanelGroupNames(deviceId || '', next);
+        return next;
+      });
 
       const nextSelectedGroupNo = remainingGroups[0] || 1;
       setW2SelectedGroupNo(nextSelectedGroupNo);
       setW2GroupChoiceNo(nextSelectedGroupNo);
-      setW2GroupName(`阀组[${nextSelectedGroupNo}]`);
+      setW2GroupName(formatPanelGroupName(nextSelectedGroupNo, w2GroupNames));
       setW2SelectedPumpIndexes([]);
       setW2SelectedSensorIndexes([]);
       setShowW2GroupChoice(false);
@@ -1603,7 +1737,7 @@ export function Home() {
     const groupNo = clamp(w2SelectedGroupNo, 1, 128);
     setW2GroupChoiceMode(mode);
     setW2GroupChoiceNo(groupNo);
-    setW2GroupName(`阀组[${groupNo}]`);
+    setW2GroupName(formatPanelGroupName(groupNo, w2GroupNames));
     setShowW2GroupChoice(true);
   };
 
@@ -1620,8 +1754,9 @@ export function Home() {
 
   const openW2GroupBindEditor = (allGroups: boolean, groupNo = w2GroupChoiceNo) => {
     const selectedGroupNo = clamp(groupNo, 1, 128);
+    setW2SelectedSensorIndexes(current => current.filter(index => isGroupBindableSensor(devices[index])));
     setW2SelectedGroupNo(selectedGroupNo);
-    setW2GroupName(`阀组[${selectedGroupNo}]`);
+    setW2GroupName(formatPanelGroupName(selectedGroupNo, w2GroupNames));
     setW2GroupBindAllGroups(allGroups);
     setShowW2GroupChoice(false);
     setShowW2GroupBind(true);
@@ -1630,7 +1765,7 @@ export function Home() {
   const confirmW2GroupChoiceCurrent = () => {
     const groupNo = clamp(w2GroupChoiceNo, 1, 128);
     setW2SelectedGroupNo(groupNo);
-    setW2GroupName(`阀组[${groupNo}]`);
+    setW2GroupName(formatPanelGroupName(groupNo, w2GroupNames));
     if (w2GroupChoiceMode === 'bind') {
       openW2GroupBindEditor(false, groupNo);
     } else if (w2GroupChoiceMode === 'clear') {
@@ -1743,6 +1878,7 @@ export function Home() {
   };
 
   const toggleGroupSelection = (index: number, pump: boolean) => {
+    if (!pump && !isGroupBindableSensor(devices[index])) return;
     const setter = pump ? setW2SelectedPumpIndexes : setW2SelectedSensorIndexes;
     setter(current => current.includes(index) ? current.filter(item => item !== index) : [...current, index]);
   };
@@ -1750,7 +1886,7 @@ export function Home() {
   const confirmW2GroupBind = () => {
     const selectedIndexes = Array.from(new Set([
       ...w2SelectedPumpIndexes,
-      ...w2SelectedSensorIndexes,
+      ...w2SelectedSensorIndexes.filter(index => isGroupBindableSensor(devices[index])),
     ]));
     const selectedAddresses = selectedIndexes
       .map(index => devices[index]?.address)
@@ -1795,10 +1931,16 @@ export function Home() {
 
   const confirmW2Rename = () => {
     const groupNo = clamp(w2SelectedGroupNo, 1, 128);
-    const name = w2GroupName.trim() || `阀组[${groupNo}]`;
+    const name = truncateUtf8Text(w2GroupName.trim() || `阀组[${groupNo}]`, 32);
     const frame = makeW2GroupRenameCommand(groupNo, name);
     publishFrame(frame, '修改名称', () => {
       setW2GroupName(name);
+      setW2GroupNames(current => {
+        const next = { ...current, [groupNo]: name };
+        writePanelGroupNames(deviceId || '', next);
+        return next;
+      });
+      setW2GroupNumbers(current => Array.from(new Set([...current, groupNo])).sort((a, b) => a - b));
       setShowW2Rename(false);
       setShowW2Editor(true);
     }, true, () => setShowW2Rename(true), {
@@ -1819,6 +1961,21 @@ export function Home() {
             const nextGroup = removeGroupNumber(item.group, groupNo);
             return nextGroup === item.group ? item : { ...item, group: nextGroup };
           }));
+      setW2GroupPreviewEnabled(false);
+      setW2SelectedPumpIndexes([]);
+      setW2SelectedSensorIndexes([]);
+      setW2GroupBindAllGroups(false);
+      w2AutoAssignSnapshotRef.current = null;
+      setW2GroupNumbers(current => allGroups ? [1, 2, 3, 4]
+        : Array.from(new Set([1, 2, 3, 4, ...current, groupNo])).sort((a, b) => a - b));
+      if (allGroups) {
+        setW2SelectedGroupNo(1);
+        setW2GroupChoiceNo(1);
+        setW2GroupName(formatPanelGroupName(1, w2GroupNames));
+      }
+      // Remount the native scroll surface so its old offset cannot leave
+      // a shortened list blank on Android after clearing all groups.
+      setW2GroupListRevision(current => current + 1);
       setShowW2GroupChoice(false);
       setShowW2ClearTip(false);
       setShowW2Editor(true);
@@ -1834,7 +1991,6 @@ export function Home() {
     const target = devices[index];
     if (!target || target.address < 20 || syncingDevices || sending) return;
     pendingDeleteAddressRef.current = target.address;
-    setSyncRemaining(syncDisplayDeadlineRef.current > 0 ? 0 : DEVICE_SYNC_TIMEOUT_SECONDS);
     setSyncingDevices(true);
     setShowW2ActionTip(true);
     publishFrame(makeByteCommandFrame('F6', target.address), '删除设备', () => {}, true, () => {
@@ -1862,10 +2018,10 @@ export function Home() {
       syncDeadlineRef.current = 0;
       setDeviceReportPending(false);
       setSyncingDevices(false);
-      setSyncRemaining(0);
     }
 
     const cachedHash = deviceTableHashRef.current;
+    setTestDeviceTableReady(false);
     if (cachedHash === null) {
       // The runtime online hook can lag behind the cloud connection after a
       // real-device preview opens. A read has its own board ACK/data timeout.
@@ -1883,7 +2039,6 @@ export function Home() {
     syncRequestActiveRef.current = true;
     syncDeadlineRef.current = Date.now() + DEVICE_SYNC_TIMEOUT_SECONDS * 1000;
     setDeviceReportPending(true);
-    setSyncRemaining(0);
     setSyncingDevices(false);
     setShowW2ActionTip(false);
     // Start fallback when F503 is published. V can arrive before the command
@@ -1903,7 +2058,6 @@ export function Home() {
       syncDeadlineRef.current = 0;
       setDeviceReportPending(false);
       setSyncingDevices(false);
-      setSyncRemaining(0);
       onFail?.();
      }, { kind: 'device_sync', command: 'version' }, true);
   };
@@ -1926,13 +2080,15 @@ export function Home() {
       window2TransitionCloseTimerRef.current = null;
     }
 
-    // Show the cached table immediately. Version validation stays in the
-    // background and must not place a modal transition over Window2.
+    // Show the cached table immediately, without a modal transition.
     window2OpeningRef.current = false;
     setWindow2Opening(false);
     setWindow2TransitionClosing(false);
     setActivePage('device');
-    requestCurrentDeviceTable();
+    // Device data is loaded from the local cache when the device becomes known.
+    // Do not query/scan the board every time Window2 is opened; the explicit
+    // “同步” row remains the way to refresh an existing table.
+    if (deviceTableHashRef.current === null) requestCurrentDeviceTable();
   };
 
   const syncDeviceList = () => {
@@ -1950,9 +2106,7 @@ export function Home() {
     syncRequestActiveRef.current = true;
     const syncStartedAt = Date.now();
     syncDeadlineRef.current = syncStartedAt + DEVICE_SYNC_TIMEOUT_SECONDS * 1000;
-    syncDisplayDeadlineRef.current = syncStartedAt + DEVICE_DISCOVERY_DISPLAY_SECONDS * 1000;
     setDeviceReportPending(true);
-    setSyncRemaining(DEVICE_DISCOVERY_DISPLAY_SECONDS);
     setSyncingDevices(true);
     setShowW2ActionTip(true);
     publishFrame(DEVICE_SYNC_FRAME, '设备同步', () => {}, false, () => {
@@ -1962,7 +2116,6 @@ export function Home() {
       syncGroupCapacitiesRef.current = null;
       syncDeadlineRef.current = 0;
       setDeviceReportPending(false);
-      setSyncRemaining(0);
       setSyncingDevices(false);
     }, { kind: 'device_sync', command: 'sync' });
   };
@@ -2200,8 +2353,14 @@ export function Home() {
     .sort((left, right) => left.address - right.address);
   const window4GroupNumbers = w2GroupNumbers.length ? w2GroupNumbers : [1, 2, 3, 4];
 
+  const openWindow4 = () => {
+    setActivePage('test');
+    setTestDeviceTableReady(false);
+    requestCurrentDeviceTable(() => setTestDeviceTableReady(false));
+  };
+
   const toggleWindow4Device = (address: number, currentState: boolean) => {
-    if (sending) return;
+    if (sending || !testDeviceTableReady || deviceReportPending || syncRequestActiveRef.current) return;
     const enabled = !currentState;
     publishFrame(
       makeWindow4StateFrame(WINDOW4_DEVICE_STATE_COMMAND, address, enabled),
@@ -2216,7 +2375,7 @@ export function Home() {
   };
 
   const toggleWindow4Group = (index: number, groupNo: number) => {
-    if (sending) return;
+    if (sending || !testDeviceTableReady || deviceReportPending || syncRequestActiveRef.current) return;
     const enabled = !Boolean(groupTestStates[index]);
     publishFrame(
       makeWindow4StateFrame(WINDOW4_GROUP_STATE_COMMAND, groupNo, enabled),
@@ -2230,6 +2389,7 @@ export function Home() {
 
   const confirmRoundIrrigation = () => {
     setShowRoundConfirm(false);
+    if (sending || !testDeviceTableReady || deviceReportPending || syncRequestActiveRef.current) return;
     publishFrame(ROUND_IRRIGATION_ON_FRAME, '轮灌开启', () => {
       setIrrigating(true);
       appendValveLog('手动灌溉', '开启');
@@ -2244,6 +2404,20 @@ export function Home() {
   const scrollDeviceListToBottom = () => {
     setDeviceListScrollTop(current => current === 1000000 ? 1000001 : 1000000);
   };
+
+  // Cached row elements must call the latest handlers, including their current
+  // sending/sync locks and device-table revision. Never cache those closures.
+  const deviceRowActionsRef = useRef({ openW2Editor, deleteDeviceByIndex, syncDeviceList });
+  useLayoutEffect(() => {
+    deviceRowActionsRef.current = { openW2Editor, deleteDeviceByIndex, syncDeviceList };
+  });
+
+  const deviceRows = useMemo<DeviceListRow[]>(() => [
+    ...devices
+      .map((deviceItem, index) => ({ kind: 'device' as const, device: deviceItem, index }))
+      .sort((left, right) => left.device.address - right.device.address || left.index - right.index),
+    { kind: 'empty' as const, index: devices.length },
+  ], [devices]);
 
   const renderDeviceRow = (row: DeviceListRow) => {
     if (row.kind === 'empty') {
@@ -2263,7 +2437,7 @@ export function Home() {
           <View className={`${styles.deviceCell} ${styles.deviceStatusCell}`} />
           <View
             className={`${styles.deviceCell} ${styles.deviceOperationCell}`}
-            onClick={syncingDevices ? undefined : syncDeviceList}
+            onClick={syncingDevices ? undefined : () => deviceRowActionsRef.current.syncDeviceList()}
           >
             <Text className={styles.deviceLinkText}>{syncingDevices ? '同步中' : '同步'}</Text>
           </View>
@@ -2274,7 +2448,7 @@ export function Home() {
     const { device: item, index } = row;
     const canDelete = index >= DEFAULT_DEVICE_COUNT && item.address >= 20;
     const canOpenEditor = index >= DEFAULT_DEVICE_COUNT;
-    const openEditor = canOpenEditor ? () => openW2Editor(index) : undefined;
+    const openEditor = canOpenEditor ? () => deviceRowActionsRef.current.openW2Editor(index) : undefined;
 
     return (
       <View
@@ -2292,7 +2466,7 @@ export function Home() {
         </View>
         <View
           className={`${styles.deviceCell} ${styles.deviceOperationCell}`}
-          onClick={canDelete ? () => deleteDeviceByIndex(index) : undefined}
+          onClick={canDelete ? () => deviceRowActionsRef.current.deleteDeviceByIndex(index) : undefined}
         >
           <Text className={canDelete ? styles.deviceLinkText : styles.deviceBlankText}>
             {canDelete ? '删除' : ''}
@@ -2302,13 +2476,11 @@ export function Home() {
     );
   };
 
+  // Reuse the entire row subtree on unrelated reports, countdowns and dialogs.
+  // Rebuild it when table data or the footer's sync state actually changes.
+  const deviceRowElements = useMemo(() => deviceRows.map(renderDeviceRow), [deviceRows, syncingDevices]);
+
   const renderDevicePage = () => {
-    const rows: DeviceListRow[] = [
-      ...devices
-        .map((deviceItem, index) => ({ kind: 'device' as const, device: deviceItem, index }))
-        .sort((left, right) => left.device.address - right.device.address || left.index - right.index),
-      { kind: 'empty' as const, index: devices.length },
-    ];
     const columnClasses = [
       styles.deviceAddressCell,
       styles.deviceNameCell,
@@ -2334,7 +2506,7 @@ export function Home() {
         </View>
       <ScrollView className={styles.deviceList} scrollY scrollTop={deviceListScrollTop} hideScrollbar>
         <View className={styles.deviceListContent}>
-          {rows.map(renderDeviceRow)}
+          {deviceRowElements}
         </View>
       </ScrollView>
       </View>
@@ -2561,13 +2733,14 @@ export function Home() {
       {renderCycleNumberBox('cycleIntervalValue', cycleIntervalDays, value => setCycleIntervalDays(normalizeCycleValue(value, 255, 3)), 3, true, false)}
       <Text className={styles.cycleIntervalUnit}>天 每天</Text>
 
-      <Image className={styles.cycleCancelButton} src={cycleCancelImage} mode="scaleToFill" onClick={() => setShowCycleWindow(false)} />
-      <Image
-        className={styles.cycleConfirmButton}
-        src={cycleConfirmImage}
-        mode="scaleToFill"
-        onClick={confirmCycleSettings}
-      />
+      <View className={styles.cycleCancelButton} onClick={() => setShowCycleWindow(false)}>
+        <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+        <Text className={styles.w2GroupChoiceButtonLabel}>取消</Text>
+      </View>
+      <View className={styles.cycleConfirmButton} onClick={confirmCycleSettings}>
+        <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+        <Text className={styles.w2GroupChoiceButtonLabel}>确认</Text>
+      </View>
     </View>
   );
 
@@ -2599,12 +2772,14 @@ export function Home() {
         <Image className={styles.regionBackground} src={window4Region1} mode="scaleToFill" />
         <Text className={styles.testTitle}>设备测试</Text>
         <View className={styles.testHeader}><Text>名称</Text><Text>编号</Text><Text>操作</Text></View>
-        {window4OutputDevices.map(item => (
-          <View className={styles.testRow} key={`device-test-${item.address}`}>
-            <Text>{item.name}</Text><Text>{item.address}</Text>
-            <Image className={styles.testToggle} src={item.state ? window3CycleToggleOnIcon : window3CycleToggleOffIcon} mode="scaleToFill" onClick={() => toggleWindow4Device(item.address, item.state)} />
-          </View>
-        ))}
+        <ScrollView className={styles.deviceTestList} scrollY enhanced>
+          {window4OutputDevices.map(item => (
+            <View className={styles.testRow} key={`device-test-${item.address}`}>
+              <Text>{item.name}</Text><Text>{item.address}</Text>
+              <Image className={styles.testToggle} src={item.state ? window3CycleToggleOnIcon : window3CycleToggleOffIcon} mode="scaleToFill" onClick={() => toggleWindow4Device(item.address, item.state)} />
+            </View>
+          ))}
+        </ScrollView>
       </View>
       <View className={`${styles.testColumn} ${styles.groupColumn}`}>
         <Image className={styles.regionBackground} src={window4Region2} mode="scaleToFill" />
@@ -2613,7 +2788,7 @@ export function Home() {
         <ScrollView className={styles.groupTestList} scrollY enhanced>
           {window4GroupNumbers.map((groupNo, index) => (
             <View className={styles.testRow} key={`group-test-${groupNo}`}>
-              <Text>{groupNo}</Text><Text>阀组[{groupNo}]</Text>
+              <Text>{groupNo}</Text><Text>{formatPanelGroupName(groupNo, w2GroupNames)}</Text>
               <Image className={styles.testToggle} src={groupTestStates[index] ? window3CycleToggleOnIcon : window3CycleToggleOffIcon} mode="scaleToFill" onClick={() => toggleWindow4Group(index, groupNo)} />
             </View>
           ))}
@@ -2625,10 +2800,17 @@ export function Home() {
           <Text className={styles.roundUnit}>秒</Text>
           <Image className={styles.roundToggle} src={irrigating ? window3CycleToggleOnIcon : window3CycleToggleOffIcon} mode="scaleToFill" onClick={() => irrigating ? publishFrame(ROUND_IRRIGATION_OFF_FRAME, '轮灌关闭', () => {
             setIrrigating(false);
-            appendValveLog('手动', '关闭');
+            appendValveLog('手动灌溉', '关闭');
           }, true, undefined, { kind: 'round_irrigation', command: 'off' }) : setShowRoundConfirm(true)} />
         </View>
       </View>
+      {!testDeviceTableReady && (
+        <View className={styles.testVerificationOverlay}>
+          <Text onClick={() => requestCurrentDeviceTable(() => setTestDeviceTableReady(false))}>
+            {deviceReportPending || syncRequestActiveRef.current ? '正在核对主机设备表…' : '设备表未核对，点击重试'}
+          </Text>
+        </View>
+      )}
       <View className={`${styles.testColumn} ${styles.sensorColumn}`}>
         <Image className={styles.regionBackground} src={window4Region3} mode="scaleToFill" />
         <Text className={styles.testTitle}>传感器数据</Text>
@@ -2642,24 +2824,18 @@ export function Home() {
 
   const renderValveLogPage = () => (
     <View className={`${styles.pagePanel} ${styles.logPage}`}>
-      <View className={styles.logCard}>
-        <Text className={styles.logTitle}>灌溉日志</Text>
-        <ScrollView className={styles.logScroller} scrollY enhanced showScrollbar>
-          {valveLogs.length ? valveLogs.map(entry => (
-            <View className={styles.logRow} key={entry.id}>
-              <Text className={styles.logTime}>{entry.time}</Text>
-              <Text className={styles.logWeek}>{entry.week}</Text>
-              <Text className={styles.logMode}>{entry.mode}</Text>
-              <Text className={styles.logAction}>{entry.action}</Text>
-              <Text className={styles.logDetail}>{entry.detail}</Text>
-            </View>
-          )) : (
-            <View className={styles.logEmpty}>
-              <Text>暂无灌溉日志</Text>
-            </View>
-          )}
-        </ScrollView>
-      </View>
+      <CloudLogPanel key={deviceId} logs={cloudLogs} online={cloudOnline === true} scrollRequest={logScrollRequest}>
+        <View className={styles.cloudLogMore} onClick={() => setShowAppOperations(value => !value)}>
+          <Text>{showAppOperations ? '收起' : '展开'} APP 操作记录（本机）</Text>
+        </View>
+        {showAppOperations && (valveLogs.length ? [...valveLogs].reverse().map(entry => (
+          <View className={styles.cloudLogRow} key={entry.id}>
+            <Text>{entry.mode} · {entry.action} · 请求已确认</Text>
+            <Text className={styles.cloudLogTime}>{entry.time} {entry.week}</Text>
+            <Text className={styles.cloudLogFootnote}>执行结果以主机简报为准</Text>
+          </View>
+        )) : <Text className={styles.cloudLogEmpty}>本机暂无 APP 操作记录</Text>)}
+      </CloudLogPanel>
     </View>
   );
 
@@ -2669,22 +2845,17 @@ export function Home() {
         <View className={styles.header}>
           <Text className={styles.panelVersion}>版本 {PANEL_VERSION}</Text>
           <Image className={styles.brand} src={brandImage} mode="aspectFit" />
-          <Image className={styles.networkIcon} src={currentNetworkIcon} mode="aspectFit" />
-          <Text className={styles.clock}>
-            {pad2(now.getHours())}:{pad2(now.getMinutes())}:{pad2(now.getSeconds())}
-          </Text>
-          <Text className={styles.date}>
-            {now.getFullYear()}/{now.getMonth() + 1}/{now.getDate()}
-          </Text>
-          <View className={styles.week}>
-            <Text>周</Text>
-            <Text>{WEEKDAYS[now.getDay()]}</Text>
+          <View className={`${styles.cloudStatus} ${styles[`cloudStatus_${cloudStatus}`]}`}>
+            <Image className={styles.cloudIcon} src={currentCloudIcon} mode="aspectFit" />
+            <Text className={styles.cloudNetworkType}>{networkTypeLabel}</Text>
+            <Text className={styles.cloudStatusLabel}>{cloudStatusLabel}</Text>
           </View>
+          <HeaderClock />
         </View>
 
         {activePage === 'overview' && <View className={styles.contentBand}>
           <View className={`${styles.card} ${styles.statusCard}`}>
-            <Text className={styles.statusTitle}>{irrigating ? '灌溉中' : '待机'}</Text>
+            <OverviewMode snapshot={overviewSnapshot} online={cloudOnline === true} />
             <View className={styles.pressureMetric}>
               <View className={styles.metricLine}>
                 <Image className={styles.pressureIcon} src={pressureIcon} mode="aspectFit" />
@@ -2721,35 +2892,20 @@ export function Home() {
           </View>
 
           <View className={`${styles.card} ${styles.chartCard}`}>
-            <View className={styles.donut}>
-              <View className={styles.donutHole} />
-            </View>
-            <View className={styles.legend}>
-              <View className={styles.legendRow}>
-                <View className={`${styles.legendDot} ${styles.runningDot}`} />
-                <Text className={styles.runningText}>灌溉中</Text>
-              </View>
-              <View className={styles.legendRow}>
-                <View className={`${styles.legendDot} ${styles.waitingDot}`} />
-                <Text className={styles.waitingText}>等待</Text>
-              </View>
-              <View className={styles.legendRow}>
-                <View className={`${styles.legendDot} ${styles.completedDot}`} />
-                <Text className={styles.completedText}>完成</Text>
-              </View>
-            </View>
+            <OverviewChart snapshot={overviewSnapshot} online={cloudOnline === true}>
             <View
               className={styles.stopButton}
               onClick={() => publishFrame(HOME_STOP_SCHEDULE_FRAME, '停止当前计划', () => appendValveLog('自动灌溉', '关闭'), true, undefined, { kind: 'home', command: 'stop_schedule' })}
             >
               <Image className={styles.controlIcon} src={stopIcon} mode="aspectFit" />
             </View>
-            <View
+            {overviewSnapshot?.mode === 1 && overviewSnapshot.phase >= 2 && overviewSnapshot.phase <= 5 && <View
               className={styles.startButton}
-              onClick={() => publishFrame(HOME_ADVANCE_GROUP_FRAME, '进入下一组', () => appendValveLog('自动灌溉', '开启'), true, undefined, { kind: 'home', command: 'advance_group' })}
+              onClick={() => publishFrame(HOME_ADVANCE_GROUP_FRAME, '进入下一组', () => appendValveLog('自动灌溉', '下一组'), true, undefined, { kind: 'home', command: 'advance_group' })}
             >
               <Image className={styles.controlIcon} src={startIcon} mode="aspectFit" />
-            </View>
+            </View>}
+            </OverviewChart>
           </View>
         </View>}
         {activePage === 'device' && renderDevicePage()}
@@ -2771,11 +2927,11 @@ export function Home() {
             <Image className={styles.navIcon} src={activePage === 'plan' ? planSelectedIcon : planIcon} mode="aspectFit" />
             <Text className={styles.navLabel}>计划</Text>
           </View>
-          <View className={styles.navItem + ' ' + styles.navItemTest} onClick={() => setActivePage('test')}>
+          <View className={styles.navItem + ' ' + styles.navItemTest} onClick={openWindow4}>
             <Image className={styles.navIcon} src={activePage === 'test' ? testSelectedIcon : testIcon} mode="aspectFit" />
             <Text className={styles.navLabel}>测试</Text>
           </View>
-          <View className={styles.navItem + ' ' + styles.navItemLog} onClick={() => setActivePage('log')}>
+          <View className={styles.navItem + ' ' + styles.navItemLog} onClick={() => { setActivePage('log'); setLogScrollRequest(value => value + 1); }}>
             <Image className={styles.navIcon} src={activePage === 'log' ? logNavSelectedIcon : logNavIcon} mode="aspectFit" />
             <Text className={styles.navLabel}>日志</Text>
           </View>
@@ -2808,10 +2964,12 @@ export function Home() {
               </View>
               <Text className={styles.rainUnit}>天</Text>
               <View className={styles.dialogCancelButton} onClick={() => setActiveDialog(null)}>
-                <Image className={styles.dialogButtonImage} src={cancelButtonImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>取消</Text>
               </View>
               <View className={styles.dialogOkButton} onClick={confirmRainDelay}>
-                <Image className={styles.dialogButtonImage} src={okButtonImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>确认</Text>
               </View>
             </View>
           </View>
@@ -2835,10 +2993,12 @@ export function Home() {
               </View>
               <Text className={styles.humidityUnit}>%</Text>
               <View className={styles.dialogCancelButton} onClick={() => setActiveDialog(null)}>
-                <Image className={styles.dialogButtonImage} src={cancelButtonImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>取消</Text>
               </View>
               <View className={styles.dialogOkButton} onClick={confirmHumidityThreshold}>
-                <Image className={styles.dialogButtonImage} src={okButtonImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>确认</Text>
               </View>
             </View>
           </View>
@@ -2877,8 +3037,10 @@ export function Home() {
                 </View>
                 <View className={`${styles.w2AddAddressStep} ${styles.w2AddAddressNext}`} onClick={() => setNewDeviceAddress(String(Math.min(255, (parseInt(newDeviceAddress, 10) || 20) + 1)))}><Text>›</Text></View>
               </View>
-              <View className={styles.w2AddCancel} onClick={() => setShowAddDevice(false)}><Image className={styles.w2AddButtonImage} src={cancelButtonImage} mode="scaleToFill" /></View>
-              <View className={styles.w2AddOk} onClick={addDevice}><Image className={styles.w2AddButtonImage} src={okButtonImage} mode="scaleToFill" /></View>
+              <View className={styles.w2AddCancel} onClick={() => setShowAddDevice(false)}><Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>取消</Text></View>
+              <View className={styles.w2AddOk} onClick={addDevice}><Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>确认</Text></View>
             </View>
           </View>
         )}
@@ -2906,9 +3068,9 @@ export function Home() {
                 <Image className={styles.w2EditorRegionBg} src={w2SetRegion2} mode="scaleToFill" />
                 <View className={styles.w2EditorList}>
                   <Image className={styles.w2EditorListBg} src={w2ChangeIrrListBackground} mode="scaleToFill" />
-                  <ScrollView className={styles.w2EditorListRows} scrollY hideScrollbar>
+                  <ScrollView key={`group-list-${w2GroupListRevision}`} className={styles.w2EditorListRows} scrollY hideScrollbar>
                     <View className={styles.w2EditorListContent}>
-                    {w2GroupNumbers.map(groupNo => {
+                    {(w2GroupNumbers.length ? w2GroupNumbers : [1, 2, 3, 4]).map(groupNo => {
                       // Keep persisted membership visible; preview only replaces the
                       // stored row when the editor changes its address or type.
                       const editingAddress = clamp(parseInt(w2EditingAddress, 10) || 20, 20, 255);
@@ -2927,11 +3089,11 @@ export function Home() {
                         onClick={() => {
                           setW2SelectedGroupNo(groupNo);
                           setW2GroupPreviewEnabled(true);
-                          setW2GroupName(`阀组[${groupNo}]`);
+                          setW2GroupName(formatPanelGroupName(groupNo, w2GroupNames));
                         }}
                       >
                         <Text className={styles.w2EditorListRowText}>
-                          {`\u9600\u7ec4[${groupNo}] ${groupSummary}`}
+                          {`${formatPanelGroupName(groupNo, w2GroupNames)} ${groupSummary}`}
                         </Text>
                       </View>
                       );
@@ -3036,10 +3198,12 @@ export function Home() {
               ))}
 
               <View className={styles.w2CapacityCancel} onClick={cancelW2Capacity}>
-                <Image className={styles.w2CapacityButtonImage} src={w2CapacityCancelImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>取消</Text>
               </View>
               <View className={styles.w2CapacityOk} onClick={confirmW2Capacity}>
-                <Image className={styles.w2CapacityButtonImage} src={w2CapacityOkImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>确认</Text>
               </View>
             </View>
           </View>
@@ -3087,27 +3251,32 @@ export function Home() {
               <View className={styles.w2GroupBindRegion1}>
                 <Image className={styles.w2GroupBindRegionBg} src={w2GroupBindRegion1} mode="scaleToFill" />
                 <View className={`${styles.w2GroupBindField} ${styles.w2GroupBindFieldNumber}`}>
-                  <Image className={styles.w2GroupBindLabelBg} src={w2BindGroupNumber} mode="scaleToFill" />
-                  <Text className={styles.w2GroupBindValue}>{String(w2SelectedGroupNo)}</Text>
-                  <Input className={styles.w2GroupBindInput} value={String(w2SelectedGroupNo)} type="number" onInput={event => setW2SelectedGroupNo(clamp(parseInt(String(event.detail.value), 10) || 1, 1, 128))} />
+                  <Image className={styles.w2GroupBindLabelBg} src={w2GroupBindLabelBackground} mode="scaleToFill" />
+                  <Text className={styles.w2GroupBindLabel}>阀组编号</Text>
+                  <Text className={styles.w2GroupBindValue}>{w2GroupBindAllGroups ? '全部' : String(w2SelectedGroupNo)}</Text>
+                  {!w2GroupBindAllGroups && <Input className={styles.w2GroupBindInput} value={String(w2SelectedGroupNo)} type="number" onInput={event => setW2SelectedGroupNo(clamp(parseInt(String(event.detail.value), 10) || 1, 1, 128))} />}
                 </View>
                 <View className={`${styles.w2GroupBindField} ${styles.w2GroupBindFieldName}`}>
-                  <Image className={styles.w2GroupBindLabelBg} src={w2BindGroupName} mode="scaleToFill" />
-                  <Text className={styles.w2GroupBindValue}>{w2GroupName}</Text>
-                  <Input className={styles.w2GroupBindInput} value={w2GroupName} onInput={event => setW2GroupName(String(event.detail.value))} />
+                  <Image className={styles.w2GroupBindLabelBg} src={w2GroupBindLabelBackground} mode="scaleToFill" />
+                  <Text className={styles.w2GroupBindLabel}>阀组名称</Text>
+                  <Text className={styles.w2GroupBindValue}>{w2GroupBindAllGroups ? '所有阀组' : w2GroupName}</Text>
+                  {!w2GroupBindAllGroups && <Input className={styles.w2GroupBindInput} value={w2GroupName} onInput={event => setW2GroupName(String(event.detail.value))} />}
                 </View>
                 <View className={`${styles.w2GroupBindField} ${styles.w2GroupBindFieldPump}`}>
-                  <Image className={styles.w2GroupBindLabelBg} src={w2BindLinkedPump} mode="scaleToFill" />
+                  <Image className={styles.w2GroupBindLabelBg} src={w2GroupBindLabelBackground} mode="scaleToFill" />
+                  <Text className={styles.w2GroupBindLabel}>关联水泵</Text>
                   <Text className={styles.w2GroupBindValue}>{w2SelectedPumpIndexes.map(i => devices[i]?.address).filter(Boolean).join(',')}</Text>
                 </View>
                 <View className={`${styles.w2GroupBindField} ${styles.w2GroupBindFieldSensor}`}>
-                  <Image className={styles.w2GroupBindLabelBg} src={w2BindLinkedSensor} mode="scaleToFill" />
-                  <Text className={styles.w2GroupBindValue}>{w2SelectedSensorIndexes.map(i => devices[i]?.address).filter(Boolean).join(',')}</Text>
+                  <Image className={styles.w2GroupBindLabelBg} src={w2GroupBindLabelBackground} mode="scaleToFill" />
+                  <Text className={styles.w2GroupBindLabel}>关联传感器</Text>
+                  <Text className={styles.w2GroupBindValue}>{w2SelectedSensorIndexes.filter(i => isGroupBindableSensor(devices[i])).map(i => devices[i].address).join(',')}</Text>
                 </View>
               </View>
               <View className={styles.w2GroupBindRegion2}>
                 <Image className={styles.w2GroupBindRegionBg} src={w2GroupBindRegion2} mode="scaleToFill" />
-                <Image className={styles.w2GroupBindSelectBg} src={w2BindSelectPump} mode="scaleToFill" />
+                <Image className={styles.w2GroupBindSelectBg} src={w2GroupBindTitleBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupBindSelectTitle}>选择水泵</Text>
                 <ScrollView className={styles.w2GroupBindList} scrollY>
                   {devices.map((item, index) => item.type === '水泵' ? (
                     <View className={styles.w2GroupBindRow} key={`pump-${item.address}`} onClick={() => toggleGroupSelection(index, true)}>
@@ -3119,23 +3288,28 @@ export function Home() {
               </View>
               <View className={styles.w2GroupBindRegion3}>
                 <Image className={styles.w2GroupBindRegionBg} src={w2GroupBindRegion3} mode="scaleToFill" />
-                <Image className={styles.w2GroupBindSelectBg} src={w2BindSelectSensor} mode="scaleToFill" />
+                <Image className={styles.w2GroupBindSelectBg} src={w2GroupBindTitleBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupBindSelectTitle}>选择传感器</Text>
                 <ScrollView className={styles.w2GroupBindListSensor} scrollY>
-                  {devices.map((item, index) => item.type === '传感器' ? (
-                    <View className={styles.w2GroupBindRowSensor} key={`sensor-${item.address}`} onClick={() => toggleGroupSelection(index, false)}>
-                      <Text>{item.name}</Text>
-                      <Image className={styles.w2GroupBindSelectIcon} src={w2SelectedSensorIndexes.includes(index) ? selectOnImage : selectOffImage} mode="scaleToFill" />
-                    </View>
-                  ) : null)}
+                  <View className={styles.w2GroupBindSensorGrid}>
+                    {devices.map((item, index) => isGroupBindableSensor(item) ? (
+                      <View className={styles.w2GroupBindRowSensor} key={`sensor-${item.address}`} onClick={() => toggleGroupSelection(index, false)}>
+                        <Text>{item.name}</Text>
+                        <Image className={styles.w2GroupBindSelectIcon} src={w2SelectedSensorIndexes.includes(index) ? selectOnImage : selectOffImage} mode="scaleToFill" />
+                      </View>
+                    ) : null)}
+                  </View>
                 </ScrollView>
               </View>
               <View className={styles.w2GroupBindAction}>
                 <Image className={styles.w2GroupBindActionBg} src={w2GroupBindAction} mode="scaleToFill" />
                 <View className={styles.w2GroupBindCancel} onClick={() => { setShowW2GroupBind(false); setShowW2Editor(true); }}>
-                  <Image className={styles.w2CapacityButtonImage} src={w2GroupBindCancelImage} mode="scaleToFill" />
+                  <Image className={styles.w2GroupBindButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                  <Text className={styles.w2GroupBindButtonLabel}>取消</Text>
                 </View>
                 <View className={styles.w2GroupBindConfirm} onClick={confirmW2GroupBind}>
-                  <Image className={styles.w2CapacityButtonImage} src={w2GroupBindConfirm} mode="scaleToFill" />
+                  <Image className={styles.w2GroupBindButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                  <Text className={styles.w2GroupBindButtonLabel}>关联</Text>
                 </View>
               </View>
             </View>
@@ -3147,14 +3321,17 @@ export function Home() {
             <View className={styles.w2TipDialog}>
               <Image className={styles.dialogBackground} src={tipDialogBackground} mode="scaleToFill" />
               <Text className={styles.w2TipText}>请输入设备名称</Text>
-              <Image className={styles.w2RenameInputBg} src={w2GroupRenameEdit} mode="scaleToFill" />
-              <View className={styles.w2RenameInputValue}><Text>{w2DeviceNameDraft}</Text></View>
-              <Input className={styles.w2RenameInput} value={w2DeviceNameDraft} onInput={event => setW2DeviceNameDraft(String(event.detail.value))} />
+              <View className={styles.w2RenameInputField}>
+                <Image className={styles.w2RenameInputBg} src={w2GroupRenameEdit} mode="scaleToFill" />
+                <Input className={styles.w2RenameInput} value={w2DeviceNameDraft} onInput={event => setW2DeviceNameDraft(String(event.detail.value))} />
+              </View>
               <View className={styles.w2TipCancel} onClick={() => { setShowW2DeviceRename(false); setShowW2Editor(true); }}>
-                <Image className={styles.w2CapacityButtonImage} src={cancelButtonImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>取消</Text>
               </View>
               <View className={styles.w2TipOk} onClick={() => { setW2EditingName(w2DeviceNameDraft.trim() || w2EditingName); setShowW2DeviceRename(false); setShowW2Editor(true); }}>
-                <Image className={styles.w2CapacityButtonImage} src={okButtonImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>确认</Text>
               </View>
             </View>
           </View>
@@ -3164,28 +3341,31 @@ export function Home() {
           <View className={styles.modalOverlay}>
             <View className={styles.w2TipDialog}>
               <Image className={styles.dialogBackground} src={tipDialogBackground} mode="scaleToFill" />
-              <Image className={styles.w2RenameInputBg} src={w2GroupRenameEdit} mode="scaleToFill" />
-              <View className={styles.w2RenameInputValue}><Text>{w2GroupName}</Text></View>
-              <Input className={styles.w2RenameInput} value={w2GroupName} onInput={event => setW2GroupName(String(event.detail.value))} />
+              <View className={styles.w2RenameInputField}>
+                <Image className={styles.w2RenameInputBg} src={w2GroupRenameEdit} mode="scaleToFill" />
+                <Input className={styles.w2RenameInput} maxLength={32} value={w2GroupName} onInput={event => setW2GroupName(String(event.detail.value))} />
+              </View>
               <View className={styles.w2TipCancel} onClick={() => { setShowW2Rename(false); setShowW2Editor(true); }}>
-                <Image className={styles.w2CapacityButtonImage} src={cancelButtonImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>取消</Text>
               </View>
               <View className={styles.w2TipOk} onClick={confirmW2Rename}>
-                <Image className={styles.w2CapacityButtonImage} src={okButtonImage} mode="scaleToFill" />
+                <Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>确认</Text>
               </View>
             </View>
           </View>
         )}
 
         {showW2ActionTip && (
-          <View className={styles.modalOverlay} onClick={() => { if (!syncingDevices) closeW2ActionTip(); }}>
+          <View className={styles.modalOverlay} onClick={() => { if (!syncingDevices && !manualValveProgress) closeW2ActionTip(); }}>
             <View className={styles.w2ActionTipDialog} onClick={(event: any) => event.stopPropagation()}>
               <Image className={styles.dialogBackground} src={actionTipBackground} mode="scaleToFill" />
               <Text className={styles.w2ActionTipText}>
                 {syncingDevices
                   ? `同步中，请等待
-剩余 ${syncRemaining} 秒`
-                  : w2TipText}
+正在等待主机同步结果`
+                  : manualValveProgress || w2TipText}
               </Text>
             </View>
           </View>
@@ -3196,8 +3376,10 @@ export function Home() {
             <View className={styles.roundConfirmDialog}>
               <Image className={styles.dialogBackground} src={tipDialogBackground} mode="scaleToFill" />
               <Text className={styles.roundConfirmText}>是否开始轮灌？</Text>
-              <View className={styles.roundCancel} onClick={() => setShowRoundConfirm(false)}><Image className={styles.w2CapacityButtonImage} src={cancelButtonImage} mode="scaleToFill" /></View>
-              <View className={styles.roundOk} onClick={confirmRoundIrrigation}><Image className={styles.w2CapacityButtonImage} src={okButtonImage} mode="scaleToFill" /></View>
+              <View className={styles.roundCancel} onClick={() => setShowRoundConfirm(false)}><Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>取消</Text></View>
+              <View className={styles.roundOk} onClick={confirmRoundIrrigation}><Image className={styles.w2GroupChoiceButtonBackground} src={w2PlainButtonBackground} mode="scaleToFill" />
+                <Text className={styles.w2GroupChoiceButtonLabel}>确认</Text></View>
             </View>
           </View>
         )}

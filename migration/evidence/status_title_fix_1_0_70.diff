@@ -1,0 +1,23 @@
+--- a/src/pages/home/index.module.less
++++ b/src/pages/home/index.module.less
+@@ -165,11 +165,14 @@
+ .statusTitle {
+   position: absolute;
+-  left: 27.345845%;
++  /* Keep the original visual center: left + width/2 = 44.1%. The old 33.5% box
++     was narrower than 4 glyphs at 6vh, so 设备离线 / 等待主机状态 wrapped. */
++  left: 9.1%;
+   top: 6.521739%;
+-  width: 33.512064%;
++  width: 70%;
+   color: #005bbb;
+   font-size: min(3.515625vw, 6vh);
+   line-height: min(5.371094vw, 9.166667vh);
+   text-align: center;
++  white-space: nowrap;
+ }
+--- a/src/pages/home/index.tsx
++++ b/src/pages/home/index.tsx
+@@ -97,1 +97,1 @@
+-const PANEL_VERSION = '1.0.69';
++const PANEL_VERSION = '1.0.70';

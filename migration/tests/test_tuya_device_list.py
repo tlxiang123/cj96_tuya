@@ -23,7 +23,12 @@ const start = source.indexOf('  const scrollDeviceListToBottom =');
 const end = source.indexOf('  const renderPlanPage =', start);
 assert(start > 0 && end > start);
 const headers = source.match(/const DEVICE_LIST_HEADERS = ([^;]+);/)[0];
-const test = headers + '\n' + source.slice(start, end) + '\n' + `
+const test = headers + '\nfunction renderList() { hookIndex = 0;\n' + source.slice(start, end) + `
+return { renderDevicePage, renderDeviceRow };
+}
+const renderDevicePage = () => renderList().renderDevicePage();
+const renderDeviceRow = row => renderList().renderDeviceRow(row);
+` + '\n' + `
 let page = renderDevicePage();
 let header = page.props.children[1];
 assert.strictEqual(header.props.children.length, 6);
@@ -67,10 +72,45 @@ for (const count of [0, 6, 7, 222, 242]) {
   footer = renderDeviceRow({ kind: 'empty', index: count });
   assert.strictEqual(text(footer.props.children[1]), '总线设备 ' + Math.max(0, count - 6));
 }
-console.log('PASS: headers, repeated bottom clicks, footer order/count, sorted row actions, sync lock, debug actions absent');
+// 216 bus devices plus the six defaults: unrelated renders reuse every row.
+devices = Array.from({length: 222}, (_, i) => ({address: i < 6 ? i + 1 : i + 14, name: '设备' + i, group: '-'}));
+page = renderDevicePage();
+const cachedRows = page.props.children[2].props.children[0].props.children;
+assert.strictEqual(cachedRows.length, 223);
+createdElements = 0;
+const repeated = renderDevicePage().props.children[2].props.children[0].props.children;
+assert(repeated.every((row, i) => row === cachedRows[i]));
+assert(createdElements < 30, 'unrelated render must not recreate hundreds of rows');
+// Reused buttons still dispatch to the newest handler/lock closure.
+let latestDeleteCalls = 0;
+deleteDeviceByIndex = index => { if (!sending) latestDeleteCalls++; };
+renderDevicePage();
+cachedRows[6].props.children[5].props.onClick();
+assert.strictEqual(latestDeleteCalls, 1);
+sending = true;
+renderDevicePage();
+cachedRows[6].props.children[5].props.onClick();
+assert.strictEqual(latestDeleteCalls, 1);
+sending = false;
+// Immutable updates invalidate the cache, without freezing edited names.
+devices = devices.map((item, i) => i === 6 ? {...item, name: '新名称'} : item);
+const updatedRows = renderDevicePage().props.children[2].props.children[0].props.children;
+assert.notStrictEqual(updatedRows[6], cachedRows[6]);
+assert.strictEqual(text(updatedRows[6].props.children[1]), '新名称');
+console.log('PASS: headers, repeated bottom clicks, footer/count, sorted actions, sync lock, 222-device row reuse, cache invalidation and current handlers');
 `;
 const compiled = ts.transpileModule(test, { compilerOptions: { jsx: ts.JsxEmit.React, target: ts.ScriptTarget.ES2020 } }).outputText;
-const React = { createElement: (type, props, ...children) => ({ type, props: {...props, children: children.flat(Infinity)} }) };
+let createdElements = 0;
+const React = { createElement: (type, props, ...children) => { createdElements++; return { type, props: {...props, children: children.flat(Infinity)} }; } };
+let hookIndex = 0;
+const hookSlots = [];
+function useRef(initial) { const i = hookIndex++; return hookSlots[i] || (hookSlots[i] = {current: initial}); }
+function useLayoutEffect(effect) { effect(); }
+function useMemo(factory, deps) {
+  const i = hookIndex++, old = hookSlots[i];
+  if (old && deps.every((dep, j) => Object.is(dep, old.deps[j]))) return old.value;
+  const value = factory(); hookSlots[i] = {deps, value}; return value;
+}
 const styles = new Proxy({}, {get: (_, key) => key});
 let devices = [...Array.from({length: 6}, (_, i) => ({address: i + 1, name: '默认设备', group: '-', connected: false})), {address: 239, name: '电磁阀239', group: '72', connected: true, status: '关闭'}, {address: 20, name: '电磁阀20', group: '1', connected: true, status: '关闭'}];
 let deviceListScrollTop = 0, syncingDevices = false, sending = false, deviceReportPending = false;
@@ -83,11 +123,41 @@ const setShowW2ActionTip = value => { tipShown = value; };
 const setNewDeviceAddress = value => { newAddress = value; };
 const setShowAddDevice = value => { addShown = value; };
 const syncDeviceList = () => { syncCalls++; };
-const deleteDeviceByIndex = index => { deletedIndex = index; };
+let deleteDeviceByIndex = index => { deletedIndex = index; };
 const openW2Editor = index => { editedIndex = index; };
 const formatDeviceGroupText = value => value;
 function text(node) { return node == null ? '' : typeof node === 'object' ? node.props.children.map(text).join('') : String(node); }
 eval(compiled);
+
+// Entering a cached Window2 must not issue another board query. Missing cache
+// still loads the table, while re-tapping the selected tab remains a no-op.
+const openStart = source.indexOf('  const openWindow2 =');
+const openEnd = source.indexOf('  const syncDeviceList =', openStart);
+assert(openStart > 0 && openEnd > openStart);
+const openTest = source.slice(openStart, openEnd) + `
+openWindow2();
+assert.strictEqual(activePage, 'device');
+assert.strictEqual(tableRequests, 0);
+activePage = 'overview';
+openWindow2();
+assert.strictEqual(tableRequests, 0);
+activePage = 'overview';
+deviceTableHashRef.current = null;
+openWindow2();
+assert.strictEqual(tableRequests, 1);
+openWindow2();
+assert.strictEqual(tableRequests, 1);
+console.log('PASS: cached Window2 opens without querying; missing cache requests table');
+`;
+let activePage = 'overview', tableRequests = 0;
+const deviceId = 'test-device';
+const deviceTableHashRef = {current: 123};
+const window2TransitionTimerRef = {current: null}, window2TransitionCloseTimerRef = {current: null};
+const window2OpeningRef = {current: false};
+const setActivePage = value => { activePage = value; };
+const setWindow2Opening = () => {}, setWindow2TransitionClosing = () => {};
+const requestCurrentDeviceTable = () => { tableRequests++; };
+eval(ts.transpileModule(openTest, {compilerOptions: {target: ts.ScriptTarget.ES2020}}).outputText);
 """
 
 def rules(css, name):

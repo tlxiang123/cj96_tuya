@@ -34,7 +34,11 @@ def main():
         width=1024*number(target['width'])
         for page,label,name in zip(PAGES,LABELS,NAMES):
             assert '<Text className={styles.navLabel}>'+label+'</Text>' in nav
-            handler='openWindow2' if page=='device' else '() => setActivePage('+chr(39)+page+chr(39)+')'
+            handler={
+                'device': 'openWindow2',
+                'test': 'openWindow4',
+                'log': "() => { setActivePage('log'); setLogScrollRequest(value => value + 1); }",
+            }.get(page, '() => setActivePage('+chr(39)+page+chr(39)+')')
             assert 'styles.navItem'+page.title()+'} onClick={'+handler+'}' in nav
             node=next(v for v in controls if v.get('picTab',{}).get('pic0')==name+'.png')
             label_node=next(v for v in controls if v.get('text')==label and v.get('position',{}).get('top',0)>=490)

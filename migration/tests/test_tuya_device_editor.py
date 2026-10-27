@@ -26,6 +26,9 @@ const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 let w2EditingAddress = '239', w2EditingName = '电磁阀239', w2SelectedGroupNo = 72;
 let w2EditingIndex = 225, w2GroupPreviewEnabled = false, w2EditingTypeIndex = 0;
 let w2GroupNumbers = Array.from({length: 72}, (_, i) => i + 1), devices = [];
+const w2GroupListRevision = 0;
+let w2GroupNames = {};
+const formatPanelGroupName = (group, names) => names[group] || `阀组[${group}]`;
 let selectedName = '', calls = [];
 const setW2SelectedGroupNo = value => {w2SelectedGroupNo = value;};
 const setW2GroupPreviewEnabled = value => {w2GroupPreviewEnabled = value;};
@@ -69,11 +72,13 @@ assert.strictEqual(text(find(render(), 'w2EditorAddressDigits')[0]), '020');
 for (const count of [0,4,14,72,128]) {
   w2GroupNumbers = Array.from({length: count}, (_, i) => i + 1);
   tree = render();
-  assert.strictEqual(find(tree, 'w2EditorListRow').length, count);
+  assert.strictEqual(find(tree, 'w2EditorListRow').length, count || 4);
   assert.strictEqual(find(tree, 'w2EditorListButton').length, 3);
   assert.strictEqual(find(tree, 'w2EditorListRows')[0].props.children[0].props.className, 'w2EditorListContent');
 }
-console.log('PASS: dynamic values, 0/4/14/72/128 groups, ScrollView, independent labels, 8 preserved handlers, selection and leading zeros');
+w2GroupNames = {1: '东区'};
+assert.strictEqual(text(find(render(), 'w2EditorListRow')[0]), '东区 电磁阀[20, 21, 22]');
+console.log('PASS: dynamic values, four-row empty fallback, 4/14/72/128 groups, custom names, ScrollView, independent labels, 8 preserved handlers, selection and leading zeros');
 """
 
 def rules(css, selector):
